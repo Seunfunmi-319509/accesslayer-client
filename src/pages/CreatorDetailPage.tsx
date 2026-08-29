@@ -226,25 +226,28 @@ function CreatorDetailPageContent() {
 					/>
 				</div>
 
-				<div className="rounded-2xl border border-white/10 bg-white/[0.03] px-5 py-4" data-testid="twap-price">
-					{isTwapLoading ? (
+				{isTwapLoading ? (
+					<div className="rounded-2xl border border-white/10 bg-white/[0.03] px-5 py-4" data-testid="twap-price">
 						<div aria-label="Loading 24 hour TWAP" role="status"><Skeleton className="h-3 w-24" /><Skeleton className="mt-2 h-6 w-32" /></div>
-					) : twapPrice != null ? (
+					</div>
+						<div aria-label="Loading 24 hour TWAP" role="status"><Skeleton className="h-3 w-24" /><Skeleton className="mt-2 h-6 w-32" /></div>
+					</div>
+				) : twapPrice != null ? (
+					<div className="rounded-2xl border border-white/10 bg-white/[0.03] px-5 py-4" data-testid="twap-price">
 						<div className="flex items-center justify-between gap-4">
 							<div>
 								<div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-white/55">
-									<span>TWAP (24h)</span>
+									<span className={twapDelta != null ? (twapDelta < 0 ? 'text-emerald-400' : 'text-rose-400') : ''}>TWAP (24h)</span>
 									<Tooltip content="Time-weighted average key price over the last 24 hours.">
 										<button type="button" aria-label="What is 24 hour TWAP?" className="text-white/50">ⓘ</button>
 									</Tooltip>
 								</div>
 								<div className="mt-1 text-xl font-bold text-white">{formatDisplayKeyPrice(twapPrice)}</div>
 							</div>
-							{twapDelta != null && <span className={twapDelta >= 0 ? 'text-sm font-semibold text-emerald-400' : 'text-sm font-semibold text-rose-400'}>{twapDelta >= 0 ? '▲' : '▼'} {formatDisplayKeyPrice(Math.abs(twapDelta))} vs spot</span>}
+							{twapDelta != null && <span className={twapDelta < 0 ? 'text-sm font-semibold text-emerald-400' : 'text-sm font-semibold text-rose-400'}>{twapDelta < 0 ? '▼' : '▲'} {formatDisplayKeyPrice(Math.abs(twapDelta))} vs spot</span>}
 						</div>
-					) : null}
-				</div>
-				</div>
+					</div>
+				) : null}
 
 				{/* Staking Rewards */}
 				<StakingRewardsSection {...stakingStats} isLoading={isLoading} />
