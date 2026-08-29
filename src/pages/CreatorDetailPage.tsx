@@ -230,15 +230,13 @@ function CreatorDetailPageContent() {
 					<div className="rounded-2xl border border-white/10 bg-white/[0.03] px-5 py-4" data-testid="twap-price">
 						<div aria-label="Loading 24 hour TWAP" role="status"><Skeleton className="h-3 w-24" /><Skeleton className="mt-2 h-6 w-32" /></div>
 					</div>
-						<div aria-label="Loading 24 hour TWAP" role="status"><Skeleton className="h-3 w-24" /><Skeleton className="mt-2 h-6 w-32" /></div>
-					</div>
 				) : twapPrice != null ? (
 					<div className="rounded-2xl border border-white/10 bg-white/[0.03] px-5 py-4" data-testid="twap-price">
 						<div className="flex items-center justify-between gap-4">
 							<div>
 								<div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-white/55">
 									<span className={twapDelta != null ? (twapDelta < 0 ? 'text-emerald-400' : 'text-rose-400') : ''}>TWAP (24h)</span>
-									<Tooltip content="Time-weighted average key price over the last 24 hours.">
+									<Tooltip content="Time-weighted average price over the past 24 hours. Less sensitive to short-term manipulation.">
 										<button type="button" aria-label="What is 24 hour TWAP?" className="text-white/50">ⓘ</button>
 									</Tooltip>
 								</div>
