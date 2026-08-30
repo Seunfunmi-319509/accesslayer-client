@@ -50,7 +50,9 @@ export default function Header() {
 					</span>
 				</Link>
 
-				{/* Nav */}
+				{/* Nav — hidden on mobile (< 768px) because MobileBottomNav handles
+				    primary navigation on small viewports.  `md:flex` keeps it
+				    visible on tablet and desktop. */}
 				<nav className="hidden items-center gap-8 md:flex shrink-0">
 					{navLinks.map(link =>
 						link.external ? (
