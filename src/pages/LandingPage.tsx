@@ -51,6 +51,9 @@ import {
 	formatPortfolioValueDisplay,
 	getPortfolioValueHelperText,
 	sortHoldingsByTotalValue,
+	calculatePnLSummary,
+	formatPnLDisplay,
+	formatPnLPercentage,
 } from '@/utils/portfolioValue.utils';
 import PrecisionModeToggle, {
 	type PrecisionMode,
@@ -818,6 +821,10 @@ function LandingPage() {
 		() => calculatePortfolioValue(heldKeyPositions),
 		[heldKeyPositions]
 	);
+	const pnlSummary = useMemo(
+		() => calculatePnLSummary(heldKeyPositions),
+		[heldKeyPositions]
+	);
 	const displayedPortfolioValue = isLoading
 		? {
 				...portfolioValue,
@@ -1467,6 +1474,42 @@ function LandingPage() {
 								</span>
 							</div>
 						</div>
+						{pnlSummary.status === 'ready' && pnlSummary.totalInvested > 0 && (
+							<div
+								data-testid="pnl-summary-card"
+								className="mt-4 rounded-xl border border-white/10 bg-slate-950/30 px-4 py-3"
+							>
+								<div className="flex items-center gap-6 text-sm">
+									<div>
+										<span className="text-white/45">Total Invested</span>
+										<span className="ml-2 font-grotesque font-bold text-white">
+											{formatPnLDisplay(pnlSummary.totalInvested)}
+										</span>
+									</div>
+									<div>
+										<span className="text-white/45">Current Value</span>
+										<span className="ml-2 font-grotesque font-bold text-white">
+											{formatPnLDisplay(pnlSummary.currentValue)}
+										</span>
+									</div>
+									<div>
+										<span className="text-white/45">Unrealised PnL</span>
+										<span
+											className={`ml-2 font-grotesque font-bold ${
+												pnlSummary.unrealisedPnL > 0
+													? 'text-emerald-400'
+													: pnlSummary.unrealisedPnL < 0
+														? 'text-red-400'
+														: 'text-white'
+											}`}
+										>
+											{formatPnLDisplay(pnlSummary.unrealisedPnL)} (
+											{formatPnLPercentage(pnlSummary.pnlPercentage)})
+										</span>
+									</div>
+								</div>
+							</div>
+						)}
 						{isLoading ? (
 							<CreatorHoldingsListSkeleton className="mt-6" />
 						) : heldKeyPositions.filter(
