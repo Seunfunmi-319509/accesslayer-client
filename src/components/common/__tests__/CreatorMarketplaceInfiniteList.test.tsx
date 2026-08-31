@@ -40,6 +40,7 @@ const baseHookReturn = {
 	hasMore: false,
 	isLoadingFirstPage: false,
 	isFetchingNextPage: false,
+	isRefreshing: false,
 	fetchNextPage: vi.fn(),
 	error: null,
 };
@@ -138,5 +139,50 @@ describe('CreatorMarketplaceInfiniteList', () => {
 		const call = mockUseInfiniteScroll.mock.calls[0]![0];
 		expect(call.enabled).toBe(false);
 		expect(call.hasMore).toBe(true);
+	});
+
+	describe('background refresh indicator (#691)', () => {
+		it('shows a "Refreshing…" indicator while isRefreshing is true', () => {
+			mockUseInfiniteCreatorMarketplace.mockReturnValue({
+				...baseHookReturn,
+				creators: [makeCreator('a')],
+				isRefreshing: true,
+			});
+
+			render(<CreatorMarketplaceInfiniteList />);
+
+			expect(
+				screen.getByTestId('creator-marketplace-refreshing-indicator')
+			).toBeInTheDocument();
+			expect(screen.getByText('Refreshing…')).toBeInTheDocument();
+		});
+
+		it('does not show the refreshing indicator when isRefreshing is false', () => {
+			mockUseInfiniteCreatorMarketplace.mockReturnValue({
+				...baseHookReturn,
+				creators: [makeCreator('a')],
+				isRefreshing: false,
+			});
+
+			render(<CreatorMarketplaceInfiniteList />);
+
+			expect(
+				screen.queryByTestId('creator-marketplace-refreshing-indicator')
+			).not.toBeInTheDocument();
+		});
+
+		it('still renders cached creators (no spinner) while refreshing in the background', () => {
+			mockUseInfiniteCreatorMarketplace.mockReturnValue({
+				...baseHookReturn,
+				creators: [makeCreator('a'), makeCreator('b')],
+				isRefreshing: true,
+				isLoadingFirstPage: false,
+			});
+
+			render(<CreatorMarketplaceInfiniteList />);
+
+			expect(screen.queryByTestId('creator-marketplace-initial-skeleton')).not.toBeInTheDocument();
+			expect(screen.getAllByRole('article')).toHaveLength(2);
+		});
 	});
 });

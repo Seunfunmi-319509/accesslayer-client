@@ -19,12 +19,15 @@ const createWrapper = () => {
 		},
 	});
 
-	return ({ children }: { children: ReactNode }) =>
-		React.createElement(
-			QueryClientProvider,
-			{ client: queryClient },
-			children
-		);
+	return {
+		wrapper: ({ children }: { children: ReactNode }) =>
+			React.createElement(
+				QueryClientProvider,
+				{ client: queryClient },
+				children
+			),
+		queryClient,
+	};
 };
 
 describe('useTradeMutation transaction failure logging', () => {
@@ -42,7 +45,7 @@ describe('useTradeMutation transaction failure logging', () => {
 	});
 
 	it('emits structured log on transaction failure with all required fields', async () => {
-		const wrapper = createWrapper();
+		const { wrapper, queryClient } = createWrapper();
 		const address = 'GWALLET1234567890ABCDEFGHIJ';
 		const { result } = renderHook(() => useTradeMutation(address), {
 			wrapper,
@@ -57,7 +60,7 @@ describe('useTradeMutation transaction failure logging', () => {
 
 		// Trigger mutation failure by throwing an error
 		const error = new Error('Insufficient funds');
-		vi.mocked(result.current.mutateAsync).mockRejectedValueOnce(error);
+		vi.spyOn(queryClient, 'cancelQueries').mockRejectedValueOnce(error);
 
 		result.current.mutate(variables);
 
@@ -77,7 +80,7 @@ describe('useTradeMutation transaction failure logging', () => {
 	});
 
 	it('truncates wallet address to first 4 + last 4 characters', async () => {
-		const wrapper = createWrapper();
+		const { wrapper, queryClient } = createWrapper();
 		const address = 'GWALLET1234567890ABCDEFGHIJ';
 		const { result } = renderHook(() => useTradeMutation(address), {
 			wrapper,
@@ -91,7 +94,7 @@ describe('useTradeMutation transaction failure logging', () => {
 		};
 
 		const error = new Error('Network timeout');
-		vi.mocked(result.current.mutateAsync).mockRejectedValueOnce(error);
+		vi.spyOn(queryClient, 'cancelQueries').mockRejectedValueOnce(error);
 
 		result.current.mutate(variables);
 
@@ -108,7 +111,7 @@ describe('useTradeMutation transaction failure logging', () => {
 	});
 
 	it('correctly identifies action as sell for negative amount', async () => {
-		const wrapper = createWrapper();
+		const { wrapper, queryClient } = createWrapper();
 		const { result } = renderHook(
 			() => useTradeMutation('GWALLET1234567890ABCDEFGHIJ'),
 			{ wrapper }
@@ -122,7 +125,7 @@ describe('useTradeMutation transaction failure logging', () => {
 		};
 
 		const error = new Error('Wallet locked');
-		vi.mocked(result.current.mutateAsync).mockRejectedValueOnce(error);
+		vi.spyOn(queryClient, 'cancelQueries').mockRejectedValueOnce(error);
 
 		result.current.mutate(variables);
 
@@ -139,7 +142,7 @@ describe('useTradeMutation transaction failure logging', () => {
 	});
 
 	it('captures error name or message as error_code', async () => {
-		const wrapper = createWrapper();
+		const { wrapper, queryClient } = createWrapper();
 		const { result } = renderHook(
 			() => useTradeMutation('GWALLET1234567890ABCDEFGHIJ'),
 			{ wrapper }
@@ -160,7 +163,7 @@ describe('useTradeMutation transaction failure logging', () => {
 		}
 
 		const error = new CustomError('User declined signature');
-		vi.mocked(result.current.mutateAsync).mockRejectedValueOnce(error);
+		vi.spyOn(queryClient, 'cancelQueries').mockRejectedValueOnce(error);
 
 		result.current.mutate(variables);
 
@@ -179,7 +182,7 @@ describe('useTradeMutation transaction failure logging', () => {
 		process.env.NODE_ENV = 'test';
 		debugSpy.mockClear();
 
-		const wrapper = createWrapper();
+		const { wrapper, queryClient } = createWrapper();
 		const { result } = renderHook(
 			() => useTradeMutation('GWALLET1234567890ABCDEFGHIJ'),
 			{ wrapper }
@@ -193,7 +196,7 @@ describe('useTradeMutation transaction failure logging', () => {
 		};
 
 		const error = new Error('Test error');
-		vi.mocked(result.current.mutateAsync).mockRejectedValueOnce(error);
+		vi.spyOn(queryClient, 'cancelQueries').mockRejectedValueOnce(error);
 
 		result.current.mutate(variables);
 
@@ -209,7 +212,7 @@ describe('useTradeMutation transaction failure logging', () => {
 	});
 
 	it('includes failed_at timestamp in ISO format', async () => {
-		const wrapper = createWrapper();
+		const { wrapper, queryClient } = createWrapper();
 		const { result } = renderHook(
 			() => useTradeMutation('GWALLET1234567890ABCDEFGHIJ'),
 			{ wrapper }
@@ -223,7 +226,7 @@ describe('useTradeMutation transaction failure logging', () => {
 		};
 
 		const error = new Error('Timestamp test');
-		vi.mocked(result.current.mutateAsync).mockRejectedValueOnce(error);
+		vi.spyOn(queryClient, 'cancelQueries').mockRejectedValueOnce(error);
 
 		result.current.mutate(variables);
 
@@ -241,7 +244,7 @@ describe('useTradeMutation transaction failure logging', () => {
 	});
 
 	it('handles non-Error rejection reasons as string', async () => {
-		const wrapper = createWrapper();
+		const { wrapper, queryClient } = createWrapper();
 		const { result } = renderHook(
 			() => useTradeMutation('GWALLET1234567890ABCDEFGHIJ'),
 			{ wrapper }
@@ -254,7 +257,7 @@ describe('useTradeMutation transaction failure logging', () => {
 			price: 0.1,
 		};
 
-		vi.mocked(result.current.mutateAsync).mockRejectedValueOnce(
+		vi.spyOn(queryClient, 'cancelQueries').mockRejectedValueOnce(
 			'String error'
 		);
 

@@ -8,6 +8,7 @@ import React from 'react';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { useInfiniteCreatorMarketplace } from '../useInfiniteCreatorMarketplace';
 import { courseService, type Course, type CoursesPage } from '@/services/course.service';
+import { queryKeys } from '@/lib/queryKeys';
 
 vi.mock('@/services/course.service', async () => {
 	const actual = await vi.importActual<typeof import('@/services/course.service')>(
@@ -126,5 +127,106 @@ describe('useInfiniteCreatorMarketplace', () => {
 		});
 
 		await waitFor(() => expect(mockGetCoursesPage).toHaveBeenCalledWith(1, params));
+	});
+
+	describe('stale-while-revalidate (#691)', () => {
+		it('serves cached data instantly (no first-page loading state) on remount within 60s', async () => {
+			mockGetCoursesPage.mockResolvedValue({
+				items: [makeCreator('a')],
+				page: 1,
+				hasMore: false,
+			});
+
+			const queryClient = new QueryClient({
+				defaultOptions: { queries: { retry: false } },
+			});
+			const wrapper = ({ children }: { children: React.ReactNode }) =>
+				React.createElement(QueryClientProvider, { client: queryClient }, children);
+
+			const first = renderHook(() => useInfiniteCreatorMarketplace(), { wrapper });
+			await waitFor(() => expect(first.result.current.isLoadingFirstPage).toBe(false));
+			first.unmount();
+
+			mockGetCoursesPage.mockClear();
+
+			const second = renderHook(() => useInfiniteCreatorMarketplace(), { wrapper });
+
+			// Cached data must be available immediately -- never a spinner state
+			// -- because the previous fetch is still within the 60s staleTime.
+			expect(second.result.current.isLoadingFirstPage).toBe(false);
+			expect(second.result.current.creators).toHaveLength(1);
+			expect(mockGetCoursesPage).not.toHaveBeenCalled();
+		});
+
+		it('reports isRefreshing while silently refetching stale data in the background', async () => {
+			mockGetCoursesPage.mockResolvedValue({
+				items: [makeCreator('a')],
+				page: 1,
+				hasMore: false,
+			});
+
+			const queryClient = new QueryClient({
+				defaultOptions: { queries: { retry: false } },
+			});
+			const wrapper = ({ children }: { children: React.ReactNode }) =>
+				React.createElement(QueryClientProvider, { client: queryClient }, children);
+
+			const { result } = renderHook(() => useInfiniteCreatorMarketplace(), { wrapper });
+			await waitFor(() => expect(result.current.isLoadingFirstPage).toBe(false));
+
+			expect(result.current.isRefreshing).toBe(false);
+
+			// Slow down the refetch so the transient "refreshing" window is
+			// actually observable instead of resolving synchronously.
+			let resolveRefetch!: (page: CoursesPage) => void;
+			mockGetCoursesPage.mockReturnValueOnce(
+				new Promise(resolve => {
+					resolveRefetch = resolve;
+				})
+			);
+
+			// Force the cached entry to be considered stale, then trigger a
+			// background refetch the way a remount-after-60s would.
+			queryClient.invalidateQueries({ queryKey: queryKeys.creators.infiniteList(undefined) });
+
+			await waitFor(() => expect(result.current.isRefreshing).toBe(true));
+			// Cached data must remain visible throughout -- no spinner regression.
+			expect(result.current.isLoadingFirstPage).toBe(false);
+			expect(result.current.creators).toHaveLength(1);
+
+			resolveRefetch({ items: [makeCreator('a')], page: 1, hasMore: false });
+			await waitFor(() => expect(result.current.isRefreshing).toBe(false));
+		});
+
+		it('does not set isRefreshing during the initial load or next-page fetch', async () => {
+			let resolveFirstPage!: (page: CoursesPage) => void;
+			mockGetCoursesPage.mockReturnValueOnce(
+				new Promise(resolve => {
+					resolveFirstPage = resolve;
+				})
+			);
+
+			const { result } = renderHook(() => useInfiniteCreatorMarketplace(), {
+				wrapper: createWrapper(),
+			});
+
+			expect(result.current.isRefreshing).toBe(false);
+			resolveFirstPage({ items: [makeCreator('a')], page: 1, hasMore: true });
+			await waitFor(() => expect(result.current.isLoadingFirstPage).toBe(false));
+			expect(result.current.isRefreshing).toBe(false);
+
+			let resolveNextPage!: (page: CoursesPage) => void;
+			mockGetCoursesPage.mockReturnValueOnce(
+				new Promise(resolve => {
+					resolveNextPage = resolve;
+				})
+			);
+
+			result.current.fetchNextPage();
+			await waitFor(() => expect(result.current.isFetchingNextPage).toBe(true));
+			expect(result.current.isRefreshing).toBe(false);
+
+			resolveNextPage({ items: [makeCreator('b')], page: 2, hasMore: false });
+		});
 	});
 });

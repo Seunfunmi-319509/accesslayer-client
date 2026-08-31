@@ -1,7 +1,12 @@
 import HomePage from './pages/HomePage';
 import NotFoundPage from './pages/NotFoundPage';
+import AdminDashboardPage from './pages/AdminDashboardPage';
 import CreatorDetailPage from './pages/CreatorDetailPage';
-import WatchlistPage from './pages/WatchlistPage';
+import CreatorDashboardPage from './pages/CreatorDashboardPage';
+import NotificationsPage from './pages/NotificationsPage';
+import LeaderboardPage from './pages/LeaderboardPage';
+import ProfilePage from './pages/ProfilePage';
+import FollowingPage from './pages/FollowingPage';
 
 export const routes = [
 	{
@@ -13,8 +18,8 @@ export const routes = [
 		element: <HomePage />,
 	},
 	{
-		path: '/watchlist',
-		element: <WatchlistPage />,
+		path: '/leaderboard',
+		element: <LeaderboardPage />,
 	},
 	{
 		path: '/creator/:id',
@@ -23,6 +28,30 @@ export const routes = [
 	{
 		path: '/creators/:id',
 		element: <CreatorDetailPage />,
+	},
+	{
+		path: '/creator/:id/dashboard',
+		element: <CreatorDashboardPage />,
+	},
+	{
+		path: '/creators/:id/dashboard',
+		element: <CreatorDashboardPage />,
+	},
+	{
+		path: '/notifications',
+		element: <NotificationsPage />,
+	},
+	{
+		path: '/profile',
+		element: <ProfilePage />,
+	},
+	{
+		path: '/following',
+		element: <FollowingPage />,
+	},
+	{
+		path: '/admin/dashboard',
+		element: <AdminDashboardPage />,
 	},
 	{
 		path: '*',

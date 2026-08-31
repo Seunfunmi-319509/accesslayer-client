@@ -1,4 +1,5 @@
-import { useRef, useState, useCallback, useEffect } from 'react';
+import { useRef, useState, useCallback } from 'react';
+import { Link } from 'react-router';
 import { useAccount } from 'wagmi';
 import { useConnectedWallet } from '@/hooks/useWatchlist';
 import type { Course } from '@/services/course.service';
@@ -13,6 +14,7 @@ import {
 	ExternalLink,
 } from 'lucide-react';
 import { Sparkline } from '@/components/ui/sparkline';
+import SectionErrorBoundary from '@/components/common/SectionErrorBoundary';
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -49,6 +51,8 @@ import WalletConnectCalloutBanner from '@/components/common/WalletConnectCallout
 import NetworkMismatchBanner from '@/components/common/NetworkMismatchBanner';
 import CreatorSocialLinksList from '@/components/common/CreatorSocialLinksList';
 import TransactionStatusIcon from '@/components/common/TransactionStatusIcon';
+import { buildStellarExpertTxUrl, truncateTxHash } from '@/constants/stellar';
+import { env } from '@/utils/env.utils';
 import MiniStatChip from '@/components/common/MiniStatChip';
 import Change24hBadge from '@/components/common/Change24hBadge';
 import KeySupplyBadge from '@/components/common/KeySupplyBadge';
@@ -154,11 +158,21 @@ const CreatorCard: React.FC<CreatorCardProps> = ({
 				creatorId: creator.id,
 				creatorTitle: displayCreatorName,
 			});
+
+			// Simulated transaction hash — replace with the real hash once the
+			// on-chain mutation is wired up.
+			const mockTxHash =
+				'0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef';
+			const explorerUrl = buildStellarExpertTxUrl(
+				mockTxHash,
+				env.VITE_STELLAR_NETWORK
+			);
+
 			showToast.transactionSuccess(
-				'Purchase Successful!',
-				`Bought 1 key from ${displayCreatorName}`,
-				'0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef',
-				'https://stellar.expert/explorer/testnet/tx/0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef'
+				'Transaction confirmed',
+				truncateTxHash(mockTxHash),
+				mockTxHash,
+				explorerUrl
 			);
 
 			window.setTimeout(() => {
@@ -217,6 +231,9 @@ const CreatorCard: React.FC<CreatorCardProps> = ({
 		// Implementation for contract interaction would go here
 		runPurchaseAttempt();
 	}, [isConnected, isNetworkMismatch, expectedChainName, displayCreatorName, runPurchaseAttempt]);
+
+	const resolvedHolderCount =
+		creator.holderCount ?? creator.holdersCount ?? creator.holders ?? creator.creatorShareSupply;
 
 	return (
 		<div
@@ -313,7 +330,13 @@ const CreatorCard: React.FC<CreatorCardProps> = ({
 						id={`creator-name-${creator.id}`}
 						className="font-jakarta text-lg font-bold text-white"
 					>
-						{displayCreatorName}
+						<Link
+							to={`/creator/${creator.id}`}
+							data-testid="creator-profile-link"
+							className="hover:underline"
+						>
+							{displayCreatorName}
+						</Link>
 					</h3>
 					<VerifiedBadge
 						verified={Boolean(creator.isVerified)}
@@ -379,29 +402,36 @@ const CreatorCard: React.FC<CreatorCardProps> = ({
 				else if (latest < earliest) lineColor = '#ef4444';
 
 				return (
-					<div className="mt-3">
-						<Sparkline
-							data={creator.priceHistory}
-							color={lineColor}
-						/>
-						<table id={priceChartDescriptionId} className="sr-only">
-							<caption>{priceChartAccessibility.summary}</caption>
-							<thead>
-								<tr>
-									<th scope="col">Point</th>
-									<th scope="col">Key price</th>
-								</tr>
-							</thead>
-							<tbody>
-								{priceChartAccessibility.points.map(point => (
-									<tr key={point.label}>
-										<th scope="row">{point.label}</th>
-										<td>{point.value}</td>
+					<SectionErrorBoundary
+						sectionName="bonding curve chart"
+						title="Chart unavailable — try refreshing"
+						description=""
+						minHeight={40}
+					>
+						<div className="mt-3">
+							<Sparkline
+								data={creator.priceHistory}
+								color={lineColor}
+							/>
+							<table id={priceChartDescriptionId} className="sr-only">
+								<caption>{priceChartAccessibility.summary}</caption>
+								<thead>
+									<tr>
+										<th scope="col">Point</th>
+										<th scope="col">Key price</th>
 									</tr>
-								))}
-							</tbody>
-						</table>
-					</div>
+								</thead>
+								<tbody>
+									{priceChartAccessibility.points.map(point => (
+										<tr key={point.label}>
+											<th scope="row">{point.label}</th>
+											<td>{point.value}</td>
+										</tr>
+									))}
+								</tbody>
+							</table>
+						</div>
+					</SectionErrorBoundary>
 				);
 			})()}
 
@@ -494,6 +524,17 @@ const CreatorCard: React.FC<CreatorCardProps> = ({
 						truncateValue={false}
 						valueClassName="font-grotesque text-base font-black text-amber-400"
 					/>
+					{resolvedHolderCount != null && (
+						<CardMetaRow
+							label="Holders"
+							value={
+								<span data-testid="creator-card-holders">
+									{`${resolvedHolderCount} holders`}
+								</span>
+							}
+							valueClassName="text-white/75"
+						/>
+					)}
 				</div>
 				<CreatorListRowDivider className="my-4" />
 				<CreatorSocialLinksList

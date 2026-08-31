@@ -6,6 +6,7 @@ import { renderHook, waitFor } from '@testing-library/react';
 import React from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { useTradeMutation } from '../useWallet';
+import { queryKeys } from '@/lib/queryKeys';
 
 vi.mock('@/utils/toast.util', () => ({
 	default: {
@@ -17,12 +18,14 @@ vi.mock('@/utils/toast.util', () => ({
 	},
 }));
 
-function createWrapper() {
-	const queryClient = new QueryClient({
-		defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
-	});
-	return function Wrapper({ children }: { children: React.ReactNode }) {
-		return React.createElement(QueryClientProvider, { client: queryClient }, children);
+function createWrapper(queryClient = new QueryClient({
+	defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+})) {
+	return {
+		queryClient,
+		Wrapper: function Wrapper({ children }: { children: React.ReactNode }) {
+			return React.createElement(QueryClientProvider, { client: queryClient }, children);
+		},
 	};
 }
 
@@ -32,8 +35,8 @@ describe('useTradeMutation cache invalidation log (#636)', () => {
 		process.env.NODE_ENV = 'development';
 		const debugSpy = vi.spyOn(console, 'debug').mockImplementation(() => {});
 
-		const wrapper = createWrapper();
-		const { result } = renderHook(() => useTradeMutation('GWALLET'), { wrapper });
+		const { Wrapper } = createWrapper();
+		const { result } = renderHook(() => useTradeMutation('GWALLET'), { wrapper: Wrapper });
 
 		result.current.mutate({
 			creatorId: 'creator-1',
@@ -61,8 +64,8 @@ describe('useTradeMutation cache invalidation log (#636)', () => {
 	it('does not emit the log in test environment', async () => {
 		const debugSpy = vi.spyOn(console, 'debug').mockImplementation(() => {});
 
-		const wrapper = createWrapper();
-		const { result } = renderHook(() => useTradeMutation('GWALLET'), { wrapper });
+		const { Wrapper } = createWrapper();
+		const { result } = renderHook(() => useTradeMutation('GWALLET'), { wrapper: Wrapper });
 
 		result.current.mutate({
 			creatorId: 'creator-2',
@@ -76,5 +79,31 @@ describe('useTradeMutation cache invalidation log (#636)', () => {
 		expect(debugSpy).not.toHaveBeenCalled();
 
 		debugSpy.mockRestore();
+	});
+
+	it('invalidates the marketplace list cache after a trade settles (#691)', async () => {
+		const { queryClient, Wrapper } = createWrapper();
+
+		queryClient.setQueryData(queryKeys.creators.infiniteList(undefined), {
+			pages: [{ items: [], page: 1, hasMore: false }],
+			pageParams: [1],
+		});
+
+		const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries');
+
+		const { result } = renderHook(() => useTradeMutation('GWALLET'), { wrapper: Wrapper });
+
+		result.current.mutate({
+			creatorId: 'creator-3',
+			amount: 2,
+			priceStroops: 250_000,
+			price: 0.03,
+		});
+
+		await waitFor(() => expect(result.current.isSuccess).toBe(true), { timeout: 3000 });
+
+		expect(invalidateSpy).toHaveBeenCalledWith(
+			expect.objectContaining({ queryKey: queryKeys.creators.all }),
+		);
 	});
 });

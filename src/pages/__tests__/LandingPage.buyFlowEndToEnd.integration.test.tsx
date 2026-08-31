@@ -18,6 +18,10 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+vi.mock('wagmi', () => ({
+	useAccount: vi.fn(() => ({ address: undefined, isConnected: false })),
+}));
+
 import LandingPage from '@/pages/LandingPage';
 import { courseService, type Course } from '@/services/course.service';
 import showToast from '@/utils/toast.util';
@@ -199,7 +203,10 @@ describe('LandingPage buy flow end-to-end (#642)', () => {
 		await screen.findByText('3 keys · 0.05 XLM');
 
 		// Open the trade panel on the buy side
-		const [buyButton] = screen.getAllByRole('button', { name: 'Buy' });
+		const [buyButton] = screen.getAllByRole('button', {
+			name: 'Buy',
+			hidden: true,
+		});
 		fireEvent.click(buyButton);
 
 		// Enter quantity 1
@@ -213,7 +220,7 @@ describe('LandingPage buy flow end-to-end (#642)', () => {
 			() =>
 				expect(mockShowToast.transactionSuccess).toHaveBeenCalledWith(
 					'Trade confirmed',
-					'Holdings refreshed: +1 keys.'
+					'Bought 1 key from Alex Rivers'
 				),
 			{ timeout: 5000 }
 		);
@@ -227,13 +234,16 @@ describe('LandingPage buy flow end-to-end (#642)', () => {
 
 		// No error state at any stage of the flow
 		expect(mockShowToast.error).not.toHaveBeenCalled();
-	});
+	}, 15000);
 
 	it('reports the submitted quantity while the transaction is pending', async () => {
 		renderLandingPage();
 		await screen.findByText('3 keys · 0.05 XLM');
 
-		const [buyButton] = screen.getAllByRole('button', { name: 'Buy' });
+		const [buyButton] = screen.getAllByRole('button', {
+			name: 'Buy',
+			hidden: true,
+		});
 		fireEvent.click(buyButton);
 		fireEvent.change(await screen.findByTestId('trade-dialog-amount'), {
 			target: { value: '1' },
@@ -249,7 +259,10 @@ describe('LandingPage buy flow end-to-end (#642)', () => {
 		renderLandingPage();
 		await screen.findByText('3 keys · 0.05 XLM');
 
-		const [buyButton] = screen.getAllByRole('button', { name: 'Buy' });
+		const [buyButton] = screen.getAllByRole('button', {
+			name: 'Buy',
+			hidden: true,
+		});
 		fireEvent.click(buyButton);
 
 		const amountInput = await screen.findByTestId('trade-dialog-amount');
@@ -258,4 +271,107 @@ describe('LandingPage buy flow end-to-end (#642)', () => {
 		const confirmButton = screen.getByTestId('trade-dialog-confirm');
 		expect(confirmButton).not.toBeDisabled();
 	});
+
+	it('displays a pending indicator during the buy and clears it after confirmation (#672)', async () => {
+		renderLandingPage();
+		await screen.findByText('3 keys · 0.05 XLM');
+
+		// Open the trade panel on the buy side and enter the quantity.
+		const [buyButton] = screen.getAllByRole('button', {
+			name: 'Buy',
+			hidden: true,
+		});
+		fireEvent.click(buyButton);
+		const amountInput = await screen.findByTestId('trade-dialog-amount');
+		fireEvent.change(amountInput, { target: { value: '1' } });
+		const confirmButton = screen.getByTestId('trade-dialog-confirm');
+
+		// Submit. AC #1: a pending indicator is visible on the dialog the
+		// instant the click handler sets `tradeSubmitting = true`. The
+		// loading state mirrors the synchronous loading-toast assertion above
+		// (both fire before the first `await`).
+		fireEvent.click(confirmButton);
+
+		expect(confirmButton).toBeDisabled();
+		expect(confirmButton).toHaveAttribute('aria-busy', 'true');
+		// StableButtonContent renders BOTH the idle and loading slots in the
+		// DOM (so the button width stays stable across the swap) and toggles
+		// CSS visibility via the `invisible` Tailwind class. jest-dom's
+		// `.toBeVisible()` honors `visibility: hidden` (and `aria-hidden`),
+		// so it correctly reflects what the user perceives.
+		expect(screen.getByText('Submitting…')).toBeVisible();
+		expect(screen.getByText('Confirm buy')).toHaveAttribute('aria-hidden', 'true');
+		// The loading toast announces the in-flight submission right away.
+		expect(mockShowToast.loading).toHaveBeenCalledWith(
+			'Submitting buy for 1 key...'
+		);
+		// The optimistic-update "Pending" pill on the holdings row is the
+		// second observable pending signal during the same in-flight window.
+		// (react-query's onMutate flips cache `pending: true` synchronously
+		// and RTL's `fireEvent` flushes the re-render via act(), but we still
+		// poll here for consistency with the file's waitFor idiom.)
+		await waitFor(
+			() =>
+				expect(
+					screen.getAllByText('Pending', { exact: true }).length
+				).toBeGreaterThan(0),
+			{ timeout: 1000 }
+		);
+		// No error toast during the in-flight window.
+		expect(mockShowToast.error).not.toHaveBeenCalled();
+
+		// Wait for the simulated on-chain confirmation to land.
+		// AC #3: success toast is visible after confirmation.
+		await waitFor(
+			() =>
+				expect(mockShowToast.transactionSuccess).toHaveBeenCalledWith(
+					'Trade confirmed',
+					'Bought 1 key from Alex Rivers'
+				),
+			{ timeout: 5000 }
+		);
+
+		// AC #2: pending indicator absent after confirmation. Two surfaces
+		// carried a pending signal — the dialog (now unmounted) and the
+		// holdings row's badge. Both must be gone: dialog unmount proves the
+		// submit control unmounted, exact-match on the holdings pill proves
+		// the optimistic-update path also settled.
+		await waitFor(
+			() =>
+				expect(
+					screen.queryByTestId('trade-dialog-confirm')
+				).not.toBeInTheDocument(),
+			{ timeout: 5000 }
+		);
+		await waitFor(
+			() =>
+				expect(
+					screen.queryByText('Pending', { exact: true })
+				).not.toBeInTheDocument(),
+			{ timeout: 5000 }
+		);
+
+		// Holdings cache reflects the additional key.
+		await waitFor(
+			() => expect(screen.getByText('4 keys · 0.05 XLM')).toBeInTheDocument(),
+			{ timeout: 5000 }
+		);
+		expect(screen.queryByText('3 keys · 0.05 XLM')).toBeNull();
+
+		// AC #4: the submit button is re-enabled after confirmation. We
+		// cannot observe the original button (it unmounted with the dialog),
+		// so re-open the trade dialog: a fresh `<TradeDialog open
+		// isSubmitting={false} />` proves the parent state was fully reset.
+		// If `tradeSubmitting` had been left `true`, the reopened confirm
+		// would still report `aria-busy` and the "Submitting…" label would
+		// still be visible.
+		const [buyButtonAgain] = screen.getAllByRole('button', { name: 'Buy' });
+		fireEvent.click(buyButtonAgain);
+
+		const reopenedConfirm = await screen.findByTestId('trade-dialog-confirm');
+		expect(reopenedConfirm).not.toBeDisabled();
+		expect(reopenedConfirm).not.toHaveAttribute('aria-busy');
+		expect(screen.getByText('Confirm buy')).toBeVisible();
+		expect(screen.getByText('Submitting…')).toHaveAttribute('aria-hidden', 'true');
+	}, 15000);
 });

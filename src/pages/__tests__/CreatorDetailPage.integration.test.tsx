@@ -1,11 +1,12 @@
 import type { ComponentProps, ReactNode } from 'react';
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter, Routes, Route } from 'react-router';
 import CreatorDetailPage from '@/pages/CreatorDetailPage';
 import { courseService } from '@/services/course.service';
 import { ApiError } from '@/services/api.service';
+import { queryKeys } from '@/lib/queryKeys';
 
 vi.mock('@/services/course.service', () => ({
 	courseService: {
@@ -46,6 +47,17 @@ function makeFreshQueryClient() {
 	return new QueryClient({
 		defaultOptions: { queries: { retry: false } },
 	});
+}
+
+function createDeferred<T>() {
+	let resolve!: (value: T | PromiseLike<T>) => void;
+	let reject!: (reason?: unknown) => void;
+	const promise = new Promise<T>((res, rej) => {
+		resolve = res;
+		reject = rej;
+	});
+
+	return { promise, resolve, reject };
 }
 
 describe('CreatorDetailPage Integration', () => {
@@ -110,6 +122,62 @@ describe('CreatorDetailPage Integration', () => {
 		// Assert raw bps values are not visible in the rendered output
 		expect(screen.queryByText('500')).not.toBeInTheDocument();
 		expect(screen.queryByText('250')).not.toBeInTheDocument();
+	});
+
+	it('updates the displayed price after a background refetch without flashing a loading skeleton', async () => {
+		const initialCreator = {
+			id: 'creator-123',
+			title: 'Alex Rivers',
+			description: 'Digital Artist & Illustrator',
+			price: 100,
+			priceStroops: 1_000_000_000,
+			creatorShareSupply: 120,
+			instructorId: 'arivers',
+			category: 'Art',
+			level: 'BEGINNER' as const,
+			isVerified: true,
+			thumbnail:
+				'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=400&fit=crop',
+			creatorFeeBps: 500,
+			protocolFeeBps: 250,
+		};
+		const updatedCreator = {
+			...initialCreator,
+			price: 150,
+			priceStroops: 1_500_000_000,
+		};
+		const refetchDeferred = createDeferred<typeof updatedCreator>();
+
+		mockGetCourse
+			.mockResolvedValueOnce(initialCreator)
+			.mockImplementationOnce(() => refetchDeferred.promise);
+
+		render(
+			<QueryClientProvider client={queryClient}>
+				<MemoryRouter initialEntries={['/creators/creator-123']}>
+					<Routes>
+						<Route path="/creators/:id" element={<CreatorDetailPage />} />
+					</Routes>
+				</MemoryRouter>
+			</QueryClientProvider>
+		);
+
+		expect(await screen.findByText('100.00 XLM')).toBeInTheDocument();
+		expect(screen.queryByLabelText(/loading creator profile/i)).not.toBeInTheDocument();
+
+		await act(async () => {
+			void queryClient.invalidateQueries({
+				queryKey: queryKeys.creators.detail('creator-123'),
+			});
+		});
+
+		expect(screen.getByText('100.00 XLM')).toBeInTheDocument();
+		expect(screen.queryByLabelText(/loading creator profile/i)).not.toBeInTheDocument();
+
+		refetchDeferred.resolve(updatedCreator);
+
+		expect(await screen.findByText('150.00 XLM')).toBeInTheDocument();
+		expect(screen.queryByText('100.00 XLM')).not.toBeInTheDocument();
 	});
 
 	it('renders a creator-not-found state for a 404 response on the canonical /creator route', async () => {

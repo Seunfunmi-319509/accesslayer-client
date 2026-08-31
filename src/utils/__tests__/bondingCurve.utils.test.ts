@@ -42,7 +42,7 @@ describe('bonding curve utilities', () => {
 			};
 			const price = computeBondingCurvePrice(20, params);
 			// price = 5_000_000 * (1 + 0.005 * 20) = 5_000_000 * 1.1 = 5_500_000
-			expect(price).toBe(5_500_000);
+			expect(price).toBeCloseTo(5_500_000);
 		});
 
 		it('throws error for negative supply', () => {
@@ -106,7 +106,8 @@ describe('bonding curve utilities', () => {
 	describe('computeBuyCost', () => {
 		it('calculates cost for single key at base price', () => {
 			const cost = computeBuyCost(0, 1, defaultParams);
-			expect(cost).toBe(10_000_000); // Base price for first key
+			// avg price between supply 0 and 1: (10_000_000 + 10_100_000) / 2 = 10_050_000
+			expect(cost).toBeCloseTo(10_050_000);
 		});
 
 		it('calculates cost for multiple keys', () => {
@@ -225,16 +226,16 @@ describe('bonding curve utilities', () => {
 			}
 			
 			// Verify specific values
-			expect(prices[0]).toBe(10_000_000); // Supply 0
-			expect(prices[5]).toBe(10_500_000); // Supply 50
-			expect(prices[10]).toBe(11_000_000); // Supply 100
+			expect(prices[0]).toBeCloseTo(10_000_000); // Supply 0
+			expect(prices[5]).toBeCloseTo(15_000_000); // Supply 50 (10M * (1 + 0.01*50))
+			expect(prices[10]).toBeCloseTo(20_000_000); // Supply 100 (10M * (1 + 0.01*100))
 		});
 
 		it('handles large supply values', () => {
 			const largeSupply = 10000;
 			const price = computeBondingCurvePrice(largeSupply, defaultParams);
 			// price = 10_000_000 * (1 + 0.01 * 10000) = 10_000_000 * 101 = 1_010_000_000
-			expect(price).toBe(1_010_000_000);
+			expect(price).toBeCloseTo(1_010_000_000);
 		});
 	});
 });

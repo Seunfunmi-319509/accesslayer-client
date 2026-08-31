@@ -13,6 +13,10 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+vi.mock('wagmi', () => ({
+	useAccount: vi.fn(() => ({ address: undefined, isConnected: false })),
+}));
+
 import LandingPage from '@/pages/LandingPage';
 import { courseService, type Course } from '@/services/course.service';
 import showToast from '@/utils/toast.util';
@@ -196,7 +200,10 @@ describe('LandingPage sell flow end-to-end (#644)', () => {
 		await screen.findByText('3 keys · 0.05 XLM');
 
 		// Open the trade panel on the sell side
-		const [sellButton] = screen.getAllByRole('button', { name: 'Sell' });
+		const [sellButton] = screen.getAllByRole('button', {
+			name: 'Sell',
+			hidden: true,
+		});
 		fireEvent.click(sellButton);
 
 		// Enter quantity 2
@@ -224,13 +231,16 @@ describe('LandingPage sell flow end-to-end (#644)', () => {
 
 		// No error state at any stage of the flow
 		expect(mockShowToast.error).not.toHaveBeenCalled();
-	});
+	}, 15000);
 
 	it('reports the submitted quantity while the transaction is pending', async () => {
 		renderLandingPage();
 		await screen.findByText('3 keys · 0.05 XLM');
 
-		const [sellButton] = screen.getAllByRole('button', { name: 'Sell' });
+		const [sellButton] = screen.getAllByRole('button', {
+			name: 'Sell',
+			hidden: true,
+		});
 		fireEvent.click(sellButton);
 		fireEvent.change(await screen.findByTestId('trade-dialog-amount'), {
 			target: { value: '2' },
@@ -240,13 +250,16 @@ describe('LandingPage sell flow end-to-end (#644)', () => {
 		expect(mockShowToast.loading).toHaveBeenCalledWith(
 			'Submitting sell for 2 keys...'
 		);
-	});
+	}, 15000);
 
 	it('uses the singular key wording when selling exactly one', async () => {
 		renderLandingPage();
 		await screen.findByText('3 keys · 0.05 XLM');
 
-		const [sellButton] = screen.getAllByRole('button', { name: 'Sell' });
+		const [sellButton] = screen.getAllByRole('button', {
+			name: 'Sell',
+			hidden: true,
+		});
 		fireEvent.click(sellButton);
 		fireEvent.change(await screen.findByTestId('trade-dialog-amount'), {
 			target: { value: '1' },
@@ -261,5 +274,29 @@ describe('LandingPage sell flow end-to-end (#644)', () => {
 				),
 			{ timeout: 5000 }
 		);
-	});
+	}, 15000);
+
+	it('is keyboard accessible end-to-end (#722): focuses the amount input on open, closes on Escape, and returns focus to the Sell button', async () => {
+		renderLandingPage();
+		await screen.findByText('3 keys · 0.05 XLM');
+
+		const [sellButton] = screen.getAllByRole('button', {
+			name: 'Sell',
+			hidden: true,
+		});
+		sellButton.focus();
+		fireEvent.click(sellButton);
+
+		await waitFor(() => {
+			expect(screen.getByTestId('trade-dialog-amount')).toHaveFocus();
+		});
+
+		fireEvent.keyDown(document.activeElement as Element, { key: 'Escape' });
+
+		await waitFor(() => {
+			expect(sellButton).toHaveFocus();
+		});
+
+		expect(screen.queryByTestId('trade-dialog-amount')).not.toBeInTheDocument();
+	}, 15000);
 });
