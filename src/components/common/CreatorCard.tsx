@@ -1,5 +1,6 @@
-import { useRef, useState, useCallback } from 'react';
+import { useRef, useState, useCallback, useEffect } from 'react';
 import { useAccount } from 'wagmi';
+import { useConnectedWallet } from '@/hooks/useWatchlist';
 import type { Course } from '@/services/course.service';
 import { cn } from '@/lib/utils';
 import {
@@ -57,6 +58,7 @@ import NetworkFeeHint from '@/components/common/NetworkFeeHint';
 import CreatorBio from '@/components/common/CreatorBio';
 import CreatorDropCountdown from '@/components/common/CreatorDropCountdown';
 import CreatorHandleHoverCard from '@/components/common/CreatorHandleHoverCard';
+import WatchlistButton from '@/components/common/WatchlistButton';
 import { CREATOR_CARD_MEDIA_RADIUS_CLASS } from '@/utils/creatorCardTokens';
 
 interface CreatorCardProps {
@@ -94,7 +96,11 @@ const CreatorCard: React.FC<CreatorCardProps> = ({
 		change24h: creator.change24h,
 	});
 	const priceChartDescriptionId = `creator-price-chart-description-${creator.id}`;
-	const { isConnected } = useAccount();
+	const { isConnected, address } = useAccount();
+	const setConnectedWalletKey = useConnectedWallet(state => state.setWalletKey);
+	useEffect(() => {
+		setConnectedWalletKey(address);
+	}, [address, setConnectedWalletKey]);
 	const { isMismatch: isNetworkMismatch, expectedChainName } =
 		useNetworkMismatch();
 	const [transactionState, setTransactionState] = useState<
@@ -221,7 +227,13 @@ const CreatorCard: React.FC<CreatorCardProps> = ({
 				className
 			)}
 		>
-			<div className="absolute right-3 top-3 z-20">
+			<div className="absolute right-3 top-3 z-20 flex items-center gap-2">
+				<WatchlistButton
+					creator={creator}
+					size="sm"
+					labelName={displayCreatorName}
+					className="shadow-lg shadow-black/20"
+				/>
 				<DropdownMenu>
 					<DropdownMenuTrigger
 						aria-label={`More actions for ${displayCreatorName}`}
