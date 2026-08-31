@@ -158,15 +158,24 @@ function CreatorDetailPageContent() {
 					currentLabel={`${creator.title} Profile`}
 				/>
 
-				<CreatorProfileHeader
-					name={creator.title}
-					handle={creator.socialHandle || creator.instructorId}
-					creatorId={creator.id}
-					isVerified={creator.isVerified}
-					avatarUrl={creator.thumbnail}
-					bio={creator.description}
-					priceStroops={resolveCreatorKeyPriceStroops(creator)}
-				/>
+				<div className="flex items-start gap-3">
+					<div className="min-w-0 flex-1">
+						<CreatorProfileHeader
+							name={creator.title}
+							handle={creator.socialHandle || creator.instructorId}
+							creatorId={creator.id}
+							isVerified={creator.isVerified}
+							avatarUrl={creator.thumbnail}
+							bio={creator.description}
+							priceStroops={resolveCreatorKeyPriceStroops(creator)}
+						/>
+					</div>
+					<WatchlistButton
+						creator={creator}
+						labelName={creator.title}
+						className="mt-3 shrink-0"
+					/>
+				</div>
 
 				{/* 4 Stat Cards */}
 				<div data-testid="creator-stat-cards">

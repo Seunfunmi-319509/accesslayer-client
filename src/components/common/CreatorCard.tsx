@@ -1,4 +1,4 @@
-import { useRef, useState, useCallback } from 'react';
+import { useRef, useState, useCallback, useEffect } from 'react';
 import { Link } from 'react-router';
 import { useAccount } from 'wagmi';
 import { useConnectedWallet } from '@/hooks/useWatchlist';

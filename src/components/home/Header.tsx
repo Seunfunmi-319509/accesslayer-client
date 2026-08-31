@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Moon, Sun } from 'lucide-react';
+import { Moon, Sun, Bookmark } from 'lucide-react';
 import WalletStatusChip from '@/components/common/WalletStatusChip';
 import NotificationBell from '@/components/common/NotificationBell';
 import MarketplaceHeaderSearch from '@/components/common/MarketplaceHeaderSearch';
@@ -7,6 +7,7 @@ import { useProfileStore } from '@/hooks/useProfileStore';
 import { useTheme } from '@/hooks/useTheme';
 import { Link } from 'react-router';
 import BatchBuyModal from '@/components/common/BatchBuyModal';
+import { useConnectedWallet, useWatchlist } from '@/hooks/useWatchlist';
 
 const navLinks = [
 	{ label: 'Marketplace', href: '/marketplace', external: false },
@@ -19,6 +20,8 @@ export default function Header() {
 	const [batchOpen, setBatchOpen] = useState(false);
 	const profile = useProfileStore(state => state.profile);
 	const { theme, toggleTheme } = useTheme();
+	const walletKey = useConnectedWallet(state => state.walletKey);
+	const watchlistCount = useWatchlist(state => state.getWatchlistCount(walletKey));
 
 	useEffect(() => {
 		const onScroll = () => {
