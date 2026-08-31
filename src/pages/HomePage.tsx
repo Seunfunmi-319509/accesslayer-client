@@ -5,6 +5,7 @@ import Hero from '../components/home/Hero';
 import CreatorSpotlight from '../components/home/CreatorSpotlight';
 import TrendingCreators from '../components/home/TrendingCreators';
 import TrendingLeaderboard from '../components/home/TrendingLeaderboard';
+import RecentlyViewedSection from '../components/home/RecentlyViewedSection';
 import { useNavigationTiming } from '../hooks/useNavigationTiming';
 
 export default function HomePage() {
@@ -18,6 +19,7 @@ export default function HomePage() {
 				<CreatorSpotlight />
 				<TrendingLeaderboard />
 				<TrendingCreators />
+				<RecentlyViewedSection />
 				<FAQ />
 			</main>
 			<Footer />

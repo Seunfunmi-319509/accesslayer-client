@@ -1,5 +1,7 @@
+import { useEffect } from 'react';
 import { Link, useParams } from 'react-router';
 import { useCreatorDetail } from '@/hooks/useCreators';
+import { useRecentlyViewed } from '@/hooks/useRecentlyViewed';
 import { useCreatorProfileStaleIndicator } from '@/hooks/useCreatorProfileStaleIndicator';
 import CreatorBreadcrumb from '@/components/common/CreatorBreadcrumb';
 import CreatorProfileHeader from '@/components/common/CreatorProfileHeader';
@@ -33,6 +35,23 @@ function CreatorDetailPageContent() {
 		refetch,
 	} = useCreatorDetail(id || '');
 	useNavigationTiming('creator_profile');
+
+	const recordVisit = useRecentlyViewed(state => state.addKey);
+
+	// Record this key as recently viewed once the detail data is available.
+	useEffect(() => {
+		if (!creator) return;
+		recordVisit({
+			id: creator.id,
+			title: creator.title || creator.name || 'Unnamed creator',
+			price: creator.price,
+			priceStroops: creator.priceStroops,
+			change24h: creator.change24h,
+			category: creator.category,
+			avatarUri: creator.avatarUri || creator.thumbnail,
+			walletAddress: creator.instructorId,
+		});
+	}, [creator, recordVisit]);
 
 	const {
 		holders,
