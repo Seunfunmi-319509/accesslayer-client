@@ -114,6 +114,9 @@ export function computeSlippageBounds(
 				? computeMinPriceStroops(previewPriceStroops, toleranceZPercent)
 				: null,
 	};
+}
+
+/**
  * Slippage tolerance selector logic — issue #877.
  *
  * A trade preview's `max_price` (for buys) or `min_price` (for sells) is
@@ -121,9 +124,6 @@ export function computeSlippageBounds(
  * buys accept paying up to `tolerance%` more than the preview price, sells
  * accept receiving up to `tolerance%` less.
  */
-
-/** Preset tolerance options shown in the slippage selector, in percent. */
-export const SLIPPAGE_TOLERANCE_PRESETS = [0.5, 1, 5] as const;
 
 /** Tolerances above this percentage are rejected as invalid. */
 export const MAX_SLIPPAGE_TOLERANCE_PERCENT = 50;

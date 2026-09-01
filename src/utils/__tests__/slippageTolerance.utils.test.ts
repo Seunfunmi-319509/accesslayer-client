@@ -1,5 +1,5 @@
 /**
- * Unit tests for slippage tolerance utilities (#872).
+ * Unit tests for slippage tolerance utilities (#872, #877).
  */
 
 import { describe, expect, it } from 'vitest';
@@ -11,6 +11,9 @@ import {
 	computeMaxPriceStroops,
 	computeMinPriceStroops,
 	computeSlippageBounds,
+	computeSlippagePriceBounds,
+	validateSlippageTolerance,
+	MAX_SLIPPAGE_TOLERANCE_PERCENT,
 } from '../slippageTolerance.utils';
 
 describe('slippageTolerance.utils', () => {
@@ -123,12 +126,8 @@ describe('slippageTolerance.utils', () => {
 			expect(computeSlippageBounds('buy', null, 1).maxPriceStroops).toBeNull();
 			expect(computeSlippageBounds('sell', undefined, 1).minPriceStroops).toBeNull();
 		});
-import { describe, expect, it } from 'vitest';
-import {
-	computeSlippagePriceBounds,
-	validateSlippageTolerance,
-	MAX_SLIPPAGE_TOLERANCE_PERCENT,
-} from '@/utils/slippageTolerance.utils';
+	});
+});
 
 describe('computeSlippagePriceBounds (#877)', () => {
 	it('computes max_price of 100.5 for a 0.5% buy tolerance on a 100 XLM preview', () => {

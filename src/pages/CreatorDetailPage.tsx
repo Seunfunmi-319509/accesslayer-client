@@ -22,7 +22,6 @@ import {
 } from '@/utils/keyPriceDisplay.utils';
 import KeyDetailPageErrorBoundary from '@/components/common/KeyDetailPageErrorBoundary';
 import { ApiError } from '@/services/api.service';
-import WatchlistButton from '@/components/common/WatchlistButton';
 import { useNavigationTiming } from '@/hooks/useNavigationTiming';
 import { useKeyHolders } from '@/hooks/useKeyHolders';
 import { useProfileStore } from '@/hooks/useProfileStore';
