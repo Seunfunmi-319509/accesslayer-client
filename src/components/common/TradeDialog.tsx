@@ -431,9 +431,9 @@ const TradeDialog: React.FC<TradeDialogProps> = ({
 					{amountValid && (
 						<div className="mt-3 border-t border-white/10 pt-3">
 							<SlippageToleranceSelector
-								value={slippageTolerancePercent}
-								onChange={setSlippageTolerancePercent}
-								disabled={isSubmitting}
+								previewPrice={(slippageReferencePriceStroops ?? 0) / 10_000_000}
+								side={side}
+								onToleranceChange={setSlippageTolerancePercent}
 							/>
 							{slippageBounds && (
 								<p
