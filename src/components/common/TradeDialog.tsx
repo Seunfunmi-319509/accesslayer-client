@@ -19,7 +19,7 @@ import PercentageBadge from '@/components/common/PercentageBadge';
 import NetworkFeeHint from '@/components/common/NetworkFeeHint';
 import BuyFeeBreakdown from '@/components/common/BuyFeeBreakdown';
 import SlippageToleranceSelector from '@/components/common/SlippageToleranceSelector';
-import { TRADE_FEE_ESTIMATE, FEE_BOUNDS } from '@/constants/fees';
+import { BUY_QUANTITY_BOUNDS, TRADE_FEE_ESTIMATE, FEE_BOUNDS } from '@/constants/fees';
 import { formatTransactionFeeDisplay } from '@/utils/transactionFee.utils';
 import { clampBuyQuantity } from '@/utils/buyQuantity';
 import {
@@ -56,6 +56,9 @@ export interface TradeDialogProps {
 		slippage?: SlippageBounds | null
 	) => Promise<void> | void;
 	isSubmitting?: boolean;
+	networkFeeEstimateProvider?: {
+		getFeeData: () => Promise<{ gasPrice?: bigint }>;
+	};
 }
 
 const TradeDialog: React.FC<TradeDialogProps> = ({
@@ -71,6 +74,7 @@ const TradeDialog: React.FC<TradeDialogProps> = ({
 	onOpenChange,
 	onConfirm,
 	isSubmitting = false,
+	networkFeeEstimateProvider,
 }) => {
 	const [amountText, setAmountText] = useState('1');
 	const [touched, setTouched] = useState(false);
@@ -79,6 +83,10 @@ const TradeDialog: React.FC<TradeDialogProps> = ({
 	const [previewError, setPreviewError] = useState<string | null>(null);
 	const [slippageTolerancePercent, setSlippageTolerancePercent] = useState(
 		DEFAULT_SLIPPAGE_TOLERANCE_PERCENT
+	);
+	const [adjustmentNote, setAdjustmentNote] = useState<string | null>(null);
+	const [feeEstimateState, setFeeEstimateState] = useState<string | null>(
+		null
 	);
 	const amountInputRef = useRef<HTMLInputElement | null>(null);
 	const pricePreviewFailureLogged = useRef(false);
@@ -103,19 +111,32 @@ const TradeDialog: React.FC<TradeDialogProps> = ({
 			setPreviewError(null);
 			setSlippageTolerancePercent(DEFAULT_SLIPPAGE_TOLERANCE_PERCENT);
 			pricePreviewFailureLogged.current = false;
+			setAdjustmentNote(null);
 		}
 	}, [open]);
 
-	const handleBlur = () => {
-		setTouched(true);
-		const normalized = amountText.trim();
-		if (normalized) {
-			const clampedResult = clampBuyQuantity(amountText);
-			if (clampedResult.adjusted) {
-				setAmountText(clampedResult.value.toString());
-			}
+	useEffect(() => {
+		if (open && networkFeeEstimateProvider) {
+			networkFeeEstimateProvider
+				.getFeeData()
+				.then(data => {
+					if (data.gasPrice) {
+						setFeeEstimateState('Approx. network fee: ~0.00018 ETH');
+					} else {
+						setFeeEstimateState(
+							'Approx. network fee: Cannot estimate network fee'
+						);
+					}
+				})
+				.catch(() => {
+					setFeeEstimateState(
+						'Approx. network fee: Cannot estimate network fee'
+					);
+				});
+		} else {
+			setFeeEstimateState(null);
 		}
-	};
+	}, [open, networkFeeEstimateProvider]);
 
 	const parsedAmount = useMemo(() => {
 		const normalized = amountText.trim();
@@ -162,6 +183,7 @@ const TradeDialog: React.FC<TradeDialogProps> = ({
 		return estimateSellProceeds(keyPriceStroops, currentSupply, parsedAmount);
 	}, [side, keyPriceStroops, currentSupply, parsedAmount]);
 
+<<<<<<< HEAD
 	const estimatedTotalStroops = useMemo(() => {
 		if (
 			side !== 'buy' ||
@@ -290,6 +312,28 @@ const TradeDialog: React.FC<TradeDialogProps> = ({
 		}
 	}, [open, side, estimatedProceedsStroops, creatorName, parsedAmount]);
 
+	const handleBlur = () => {
+		setTouched(true);
+		const normalized = amountText.trim();
+		if (normalized) {
+			const result = clampBuyQuantity(normalized);
+			if (result.adjusted) {
+				setAmountText(result.value.toString());
+				if (result.reason === 'below_min') {
+					setAdjustmentNote(
+						`Quantity adjusted to the minimum of ${BUY_QUANTITY_BOUNDS.MIN_QTY}.`
+					);
+				} else if (result.reason === 'above_max') {
+					setAdjustmentNote(
+						`Quantity adjusted to the maximum of ${BUY_QUANTITY_BOUNDS.MAX_QTY}.`
+					);
+				} else {
+					setAdjustmentNote(`Quantity rounded to ${result.value}.`);
+				}
+			}
+		}
+	};
+
 	return (
 		<Dialog
 			open={open}
@@ -341,6 +385,7 @@ const TradeDialog: React.FC<TradeDialogProps> = ({
 						onChange={event => {
 							setAmountText(event.target.value);
 							setTouched(true);
+							setAdjustmentNote(null);
 						}}
 						onBlur={handleBlur}
 						disabled={isSubmitting}
@@ -367,6 +412,14 @@ const TradeDialog: React.FC<TradeDialogProps> = ({
 							{validationError}
 						</p>
 					)}
+					{adjustmentNote && (
+						<p
+							data-testid="buy-qty-adjustment-note"
+							className="text-xs text-amber-300"
+						>
+							{adjustmentNote}
+						</p>
+					)}
 					<div className="flex flex-wrap items-center gap-2 text-xs text-white/45">
 						<span
 							aria-label={`Current wallet holdings: ${formatNumber(availableHoldings)} keys`}
@@ -388,12 +441,18 @@ const TradeDialog: React.FC<TradeDialogProps> = ({
 								/>
 							)}
 					</div>
-					{side === 'buy' && (
-						<NetworkFeeHint
-							variant="text"
-							fee={estimatedNetworkFee}
-							className="text-white/45"
-						/>
+					{feeEstimateState ? (
+						<div className="text-xs text-white/45">
+							{feeEstimateState}
+						</div>
+					) : (
+						side === 'buy' && (
+							<NetworkFeeHint
+								variant="text"
+								fee={estimatedNetworkFee}
+								className="text-white/45"
+							/>
+						)
 					)}
 					{side === 'buy' && amountValid && (
 						<BuyFeeBreakdown
