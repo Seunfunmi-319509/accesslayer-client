@@ -183,7 +183,6 @@ const TradeDialog: React.FC<TradeDialogProps> = ({
 		return estimateSellProceeds(keyPriceStroops, currentSupply, parsedAmount);
 	}, [side, keyPriceStroops, currentSupply, parsedAmount]);
 
-<<<<<<< HEAD
 	const estimatedTotalStroops = useMemo(() => {
 		if (
 			side !== 'buy' ||
