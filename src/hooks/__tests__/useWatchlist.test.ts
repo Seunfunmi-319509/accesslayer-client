@@ -1,115 +1,176 @@
-import { beforeEach, describe, expect, it } from 'vitest';
-import type { Course } from '@/services/course.service';
-import {
-	GUEST_WATCHLIST_KEY,
-	WATCHLIST_STORAGE_KEY,
-	resolveWatchlistWalletKey,
-	useWatchlist,
-} from '@/hooks/useWatchlist';
+import { renderHook, act } from '@testing-library/react';
+import { describe, expect, it, beforeEach } from 'vitest';
+import { useWatchlist, WATCHLIST_STORAGE_KEY } from '../useWatchlist';
 
-function makeCreator(id: string, title = `Creator ${id}`): Course {
-	return {
-		id,
-		title,
-		description: 'A test creator',
-		price: 0.05,
-		priceStroops: 500_000,
-		creatorShareSupply: 100,
-		instructorId: id,
-		category: 'Art',
-		level: 'BEGINNER',
-	};
-}
+const KEY_A = 'GABCDEF1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ1234';
+const KEY_B = 'GXYZABCDEF1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ56';
 
-describe('resolveWatchlistWalletKey', () => {
-	it('returns the guest key when no address is provided', () => {
-		expect(resolveWatchlistWalletKey()).toBe(GUEST_WATCHLIST_KEY);
-		expect(resolveWatchlistWalletKey('')).toBe(GUEST_WATCHLIST_KEY);
-		expect(resolveWatchlistWalletKey(null)).toBe(GUEST_WATCHLIST_KEY);
-		expect(resolveWatchlistWalletKey('   ')).toBe(GUEST_WATCHLIST_KEY);
-	});
-
-	it('normalises addresses to lowercase', () => {
-		expect(resolveWatchlistWalletKey('0xAbCdEf')).toBe('0xabcdef');
-		expect(resolveWatchlistWalletKey(' 0XABCDEF ')).toBe('0xabcdef');
-	});
-});
-
-describe('useWatchlist store', () => {
+describe('useWatchlist', () => {
 	beforeEach(() => {
 		window.localStorage.clear();
-		useWatchlist.setState({ bookmarksByWallet: {} });
 	});
 
-	it('adds a creator key when toggling an un-bookmarked creator', () => {
-		const creator = makeCreator('1');
-		useWatchlist.getState().toggleBookmark('0xabc', creator);
+	// ─── AC 1: Bookmarking adds key to localStorage ───────────────
+	it('adds a key to localStorage when toggled on', () => {
+		const { result } = renderHook(() => useWatchlist());
 
-		expect(useWatchlist.getState().getWatchlistCount('0xabc')).toBe(1);
-		expect(useWatchlist.getState().isBookmarked('0xabc', '1')).toBe(true);
-		expect(useWatchlist.getState().getWatchlist('0xabc')).toEqual([creator]);
+		expect(result.current.isBookmarked(KEY_A)).toBe(false);
+
+		act(() => {
+			result.current.toggleWatch(KEY_A);
+		});
+
+		expect(result.current.isBookmarked(KEY_A)).toBe(true);
+		expect(result.current.watchlist).toContain(KEY_A);
+
+		const stored = JSON.parse(
+			window.localStorage.getItem(WATCHLIST_STORAGE_KEY) ?? '[]'
+		);
+		expect(stored).toContain(KEY_A);
 	});
 
-	it('removes a creator key when toggling an already-bookmarked creator', () => {
-		const creator = makeCreator('1');
-		useWatchlist.getState().toggleBookmark('0xabc', creator);
-		useWatchlist.getState().toggleBookmark('0xabc', creator);
+	// ─── AC 2: Unbookmarking removes key from localStorage ────────
+	it('removes a key from localStorage when toggled off', () => {
+		// Seed localStorage
+		window.localStorage.setItem(
+			WATCHLIST_STORAGE_KEY,
+			JSON.stringify([KEY_A, KEY_B])
+		);
 
-		expect(useWatchlist.getState().getWatchlistCount('0xabc')).toBe(0);
-		expect(useWatchlist.getState().isBookmarked('0xabc', '1')).toBe(false);
+		const { result } = renderHook(() => useWatchlist());
+
+		expect(result.current.isBookmarked(KEY_A)).toBe(true);
+
+		act(() => {
+			result.current.toggleWatch(KEY_A);
+		});
+
+		expect(result.current.isBookmarked(KEY_A)).toBe(false);
+		expect(result.current.watchlist).not.toContain(KEY_A);
+		expect(result.current.watchlist).toContain(KEY_B);
+
+		const stored = JSON.parse(
+			window.localStorage.getItem(WATCHLIST_STORAGE_KEY) ?? '[]'
+		);
+		expect(stored).not.toContain(KEY_A);
+		expect(stored).toContain(KEY_B);
 	});
 
-	it('scopes bookmarks per wallet address', () => {
-		useWatchlist.getState().toggleBookmark('0xaaa', makeCreator('1'));
-		useWatchlist.getState().toggleBookmark('0xbbb', makeCreator('2'));
+	// ─── AC 3: Filled icon on mount for already-bookmarked keys ───
+	it('returns bookmarked=true on mount for keys already in localStorage', () => {
+		window.localStorage.setItem(
+			WATCHLIST_STORAGE_KEY,
+			JSON.stringify([KEY_A])
+		);
 
-		expect(useWatchlist.getState().getWatchlistCount('0xaaa')).toBe(1);
-		expect(useWatchlist.getState().getWatchlistCount('0xbbb')).toBe(1);
-		expect(
-			useWatchlist.getState().isBookmarked('0xaaa', '2')
-		).toBe(false);
+		const { result } = renderHook(() => useWatchlist());
+
+		expect(result.current.isBookmarked(KEY_A)).toBe(true);
+		expect(result.current.watchlist).toEqual([KEY_A]);
 	});
 
-	it('treats mixed-case addresses as the same wallet', () => {
-		useWatchlist.getState().toggleBookmark('0xAbCd', makeCreator('1'));
-		expect(useWatchlist.getState().getWatchlistCount('0xabcd')).toBe(1);
+	it('returns bookmarked=false on mount when localStorage is empty', () => {
+		const { result } = renderHook(() => useWatchlist());
+
+		expect(result.current.isBookmarked(KEY_A)).toBe(false);
+		expect(result.current.watchlist).toEqual([]);
 	});
 
-	it('removes a single bookmark by id', () => {
-		useWatchlist.getState().toggleBookmark('0xabc', makeCreator('1'));
-		useWatchlist.getState().toggleBookmark('0xabc', makeCreator('2'));
+	// ─── AC 4: Watchlist count reflects current state ─────────────
+	it('watchlistCount updates after each toggle', () => {
+		const { result } = renderHook(() => useWatchlist());
 
-		useWatchlist.getState().removeBookmark('0xabc', '1');
+		expect(result.current.watchlistCount).toBe(0);
 
-		expect(
-			useWatchlist.getState().getWatchlist('0xabc').map(c => c.id)
-		).toEqual(['2']);
+		act(() => {
+			result.current.toggleWatch(KEY_A);
+		});
+		expect(result.current.watchlistCount).toBe(1);
+
+		act(() => {
+			result.current.toggleWatch(KEY_B);
+		});
+		expect(result.current.watchlistCount).toBe(2);
+
+		act(() => {
+			result.current.toggleWatch(KEY_A);
+		});
+		expect(result.current.watchlistCount).toBe(1);
 	});
 
-	it('clears all bookmarks for a wallet', () => {
-		useWatchlist.getState().toggleBookmark('0xabc', makeCreator('1'));
-		useWatchlist.getState().clearWalletBookmarks('0xabc');
+	// ─── AC 5: clearWatchlist removes all entries ──────────────────
+	it('clearWatchlist empties localStorage and resets state', () => {
+		window.localStorage.setItem(
+			WATCHLIST_STORAGE_KEY,
+			JSON.stringify([KEY_A, KEY_B])
+		);
 
-		expect(useWatchlist.getState().getWatchlistCount('0xabc')).toBe(0);
+		const { result } = renderHook(() => useWatchlist());
+
+		expect(result.current.watchlistCount).toBe(2);
+
+		act(() => {
+			result.current.clearWatchlist();
+		});
+
+		expect(result.current.watchlist).toEqual([]);
+		expect(result.current.watchlistCount).toBe(0);
+		expect(result.current.isBookmarked(KEY_A)).toBe(false);
+		expect(result.current.isBookmarked(KEY_B)).toBe(false);
+
+		const stored = JSON.parse(
+			window.localStorage.getItem(WATCHLIST_STORAGE_KEY) ?? '[]'
+		);
+		expect(stored).toEqual([]);
 	});
 
-	it('persists bookmarks to localStorage keyed by wallet', () => {
-		useWatchlist.getState().toggleBookmark('0xabc', makeCreator('1'));
+	// ─── Toggle round-trip: add then remove ────────────────────────
+	it('toggling the same key twice returns it to the unbookmarked state', () => {
+		const { result } = renderHook(() => useWatchlist());
 
-		const raw = window.localStorage.getItem(WATCHLIST_STORAGE_KEY);
-		expect(raw).toBeTruthy();
-		const parsed = JSON.parse(raw as string) as {
-			state: { bookmarksByWallet: Record<string, Course[]> };
-		};
-		expect(parsed.state.bookmarksByWallet['0xabc']).toHaveLength(1);
+		act(() => {
+			result.current.toggleWatch(KEY_A);
+		});
+		expect(result.current.isBookmarked(KEY_A)).toBe(true);
+
+		act(() => {
+			result.current.toggleWatch(KEY_A);
+		});
+		expect(result.current.isBookmarked(KEY_A)).toBe(false);
+		expect(result.current.watchlist).toEqual([]);
 	});
 
-	it('restores bookmarks from localStorage on rehydration', () => {
-		useWatchlist.getState().toggleBookmark('0xabc', makeCreator('1'));
+	// ─── Graceful handling of malformed localStorage ───────────────
+	it('returns empty watchlist when localStorage contains invalid JSON', () => {
+		window.localStorage.setItem(WATCHLIST_STORAGE_KEY, '{ broken');
 
-		// Simulate a fresh store rehydrating from persisted storage.
-		useWatchlist.persist.rehydrate();
+		const { result } = renderHook(() => useWatchlist());
 
-		expect(useWatchlist.getState().getWatchlistCount('0xabc')).toBe(1);
+		expect(result.current.watchlist).toEqual([]);
+		expect(result.current.watchlistCount).toBe(0);
+	});
+
+	// ─── Multiple independent keys ─────────────────────────────────
+	it('tracks multiple keys independently', () => {
+		const { result } = renderHook(() => useWatchlist());
+
+		act(() => {
+			result.current.toggleWatch(KEY_A);
+		});
+		act(() => {
+			result.current.toggleWatch(KEY_B);
+		});
+
+		expect(result.current.isBookmarked(KEY_A)).toBe(true);
+		expect(result.current.isBookmarked(KEY_B)).toBe(true);
+		expect(result.current.watchlistCount).toBe(2);
+
+		act(() => {
+			result.current.toggleWatch(KEY_A);
+		});
+
+		expect(result.current.isBookmarked(KEY_A)).toBe(false);
+		expect(result.current.isBookmarked(KEY_B)).toBe(true);
+		expect(result.current.watchlistCount).toBe(1);
 	});
 });

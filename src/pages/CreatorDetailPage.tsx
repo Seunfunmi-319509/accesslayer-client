@@ -10,6 +10,8 @@ import CreatorActivityFeed from '@/components/common/CreatorActivityFeed';
 import CreatorProfileStaleIndicator from '@/components/common/CreatorProfileStaleIndicator';
 import CreatorProfileStatRow from '@/components/common/CreatorProfileStatRow';
 import { BondingCurveChart } from '@/components/common/BondingCurveChart';
+import KeySimulationTool from '@/components/common/KeySimulationTool';
+import BuyCooldownCountdown from '@/components/common/BuyCooldownCountdown';
 import KeyHolderList from '@/components/common/KeyHolderList';
 import HolderConcentrationChart from '@/components/common/HolderConcentrationChart';
 import StakingRewardsSection from '@/components/common/StakingRewardsSection';
@@ -75,6 +77,11 @@ function CreatorDetailPageContent() {
 	const { data: holdings = [] } = useWalletHoldings(userAddress ?? '');
 	const userPosition = holdings.find(h => h.creatorId === (id || ''));
 	const holdingsCount = userPosition?.quantity ?? 0;
+	// Per-user buy cooldown (#873): prefer the user's own position-level
+	// value; fall back to a creator-wide cooldown if the backend doesn't yet
+	// return a per-user one. Only shown for authenticated users.
+	const nextBuyAllowedAt =
+		userPosition?.nextBuyAllowedAt ?? creator?.nextBuyAllowedAt ?? null;
 
 	// Track stale data indicator
 	const { shouldShowBadge, handleRefetch } = useCreatorProfileStaleIndicator(
@@ -219,6 +226,11 @@ function CreatorDetailPageContent() {
 					<CreatorProfileStatRow items={statItems} />
 				</div>
 
+				{/* Buy Cooldown Countdown (only meaningful for authenticated users) */}
+				{userAddress && (
+					<BuyCooldownCountdown nextBuyAllowedAt={nextBuyAllowedAt} />
+				)}
+
 				{/* Share to X Button (only visible for authenticated holders) */}
 				<div className="flex justify-end">
 					<ShareTwitterButton
@@ -249,6 +261,13 @@ function CreatorDetailPageContent() {
 						height={300}
 					/>
 				</div>
+
+				{/* Buy Simulation Tool */}
+				<KeySimulationTool
+					currentSupply={creator.creatorShareSupply ?? 100}
+					protocolFeeBps={creator.protocolFeeBps}
+					creatorFeeBps={creator.creatorFeeBps}
+				/>
 
 				{/* Holder Concentration */}
 				<div

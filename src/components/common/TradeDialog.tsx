@@ -18,6 +18,7 @@ import {
 import PercentageBadge from '@/components/common/PercentageBadge';
 import NetworkFeeHint from '@/components/common/NetworkFeeHint';
 import BuyFeeBreakdown from '@/components/common/BuyFeeBreakdown';
+import SlippageToleranceSelector from '@/components/common/SlippageToleranceSelector';
 import { TRADE_FEE_ESTIMATE, FEE_BOUNDS } from '@/constants/fees';
 import { formatTransactionFeeDisplay } from '@/utils/transactionFee.utils';
 import { clampBuyQuantity } from '@/utils/buyQuantity';
@@ -25,6 +26,11 @@ import {
 	fetchPricePreview,
 	type FeeBreakdown,
 } from '@/utils/pricePreview.utils';
+import {
+	DEFAULT_SLIPPAGE_TOLERANCE_PERCENT,
+	computeSlippageBounds,
+	type SlippageBounds,
+} from '@/utils/slippageTolerance.utils';
 
 export type TradeSide = 'buy' | 'sell';
 
@@ -46,7 +52,8 @@ export interface TradeDialogProps {
 	onOpenChange: (open: boolean) => void;
 	onConfirm: (
 		amount: number,
-		pricePreview?: FeeBreakdown | null
+		pricePreview?: FeeBreakdown | null,
+		slippage?: SlippageBounds | null
 	) => Promise<void> | void;
 	isSubmitting?: boolean;
 }
@@ -70,6 +77,9 @@ const TradeDialog: React.FC<TradeDialogProps> = ({
 	const [pricePreview, setPricePreview] = useState<FeeBreakdown | null>(null);
 	const [previewLoading, setPreviewLoading] = useState(false);
 	const [previewError, setPreviewError] = useState<string | null>(null);
+	const [slippageTolerancePercent, setSlippageTolerancePercent] = useState(
+		DEFAULT_SLIPPAGE_TOLERANCE_PERCENT
+	);
 	const amountInputRef = useRef<HTMLInputElement | null>(null);
 	const pricePreviewFailureLogged = useRef(false);
 	const previewAbortControllerRef = useRef<AbortController | null>(null);
@@ -91,9 +101,85 @@ const TradeDialog: React.FC<TradeDialogProps> = ({
 			setPricePreview(null);
 			setPreviewLoading(false);
 			setPreviewError(null);
+			setSlippageTolerancePercent(DEFAULT_SLIPPAGE_TOLERANCE_PERCENT);
 			pricePreviewFailureLogged.current = false;
 		}
 	}, [open]);
+
+	// Internal keyboard shortcuts for amount adjustment when the dialog is open.
+	// Quick presets: 1→1, 2→2, 3→3, 4→5, 5→10, Shift+1→10
+	// Adjust: +/- to increment/decrement by 1
+	useEffect(() => {
+		if (!open || isSubmitting) return;
+
+		const handleAmountKey = (event: KeyboardEvent) => {
+			if (event.defaultPrevented || event.repeat) return;
+
+			// Only intercept when the amount input is focused
+			const activeEl = document.activeElement;
+			if (
+				!(activeEl instanceof HTMLInputElement) ||
+				activeEl.getAttribute('data-testid') !== 'trade-dialog-amount'
+			) {
+				return;
+			}
+
+			// Ignore if modifier keys are held (except Shift for !)
+			if (event.ctrlKey || event.metaKey || event.altKey) return;
+
+			const key = event.key;
+
+			// Quick amount presets
+			const presets: Record<string, number> = {
+				'1': 1,
+				'2': 2,
+				'3': 3,
+				'4': 5,
+				'5': 10,
+			};
+
+			if (!event.shiftKey && presets[key] !== undefined) {
+				event.preventDefault();
+				const clamped = clampBuyQuantity(presets[key].toString());
+				setAmountText(clamped.value.toString());
+				setTouched(true);
+				return;
+			}
+
+			// Shift+1 = 10
+			if (key === '!' && event.shiftKey) {
+				event.preventDefault();
+				const clamped = clampBuyQuantity('10');
+				setAmountText(clamped.value.toString());
+				setTouched(true);
+				return;
+			}
+
+			// Adjust amount: + and -
+			if (key === '+' || (key === '=' && event.shiftKey)) {
+				event.preventDefault();
+				const current = Number(amountText) || 0;
+				const next = Math.max(1, current + 1);
+				const clamped = clampBuyQuantity(next.toString());
+				setAmountText(clamped.value.toString());
+				setTouched(true);
+				return;
+			}
+
+			if (key === '-') {
+				event.preventDefault();
+				const current = Number(amountText) || 0;
+				const next = Math.max(1, current - 1);
+				const clamped = clampBuyQuantity(next.toString());
+				setAmountText(clamped.value.toString());
+				setTouched(true);
+				return;
+			}
+		};
+
+		window.addEventListener('keydown', handleAmountKey);
+		return () => window.removeEventListener('keydown', handleAmountKey);
+	}, [open, isSubmitting, amountText]);
 
 	const handleBlur = () => {
 		setTouched(true);
@@ -162,6 +248,27 @@ const TradeDialog: React.FC<TradeDialogProps> = ({
 		if (keyPriceStroops == null) return null;
 		return keyPriceStroops * parsedAmount;
 	}, [side, keyPriceStroops, parsedAmount]);
+
+	// The reference price slippage bounds are computed from: the fee-inclusive
+	// buy total when available, falling back to the raw estimated total, and
+	// the estimated sell proceeds on the sell side. This mirrors the same
+	// price shown to the user just above the slippage selector, so the
+	// max/min bound the contract enforces always matches what was displayed.
+	const slippageReferencePriceStroops = useMemo(() => {
+		if (side === 'buy') {
+			return pricePreview?.totalCostStroops ?? estimatedTotalStroops ?? null;
+		}
+		return estimatedProceedsStroops;
+	}, [side, pricePreview, estimatedTotalStroops, estimatedProceedsStroops]);
+
+	const slippageBounds = useMemo<SlippageBounds | null>(() => {
+		if (slippageReferencePriceStroops == null) return null;
+		return computeSlippageBounds(
+			side,
+			slippageReferencePriceStroops,
+			slippageTolerancePercent
+		);
+	}, [side, slippageReferencePriceStroops, slippageTolerancePercent]);
 
 	// Fetch price preview (fee breakdown) for buy transactions
 	useEffect(() => {
@@ -396,6 +503,43 @@ const TradeDialog: React.FC<TradeDialogProps> = ({
 							)}
 						</div>
 					)}
+					{amountValid && (
+						<div className="mt-3 border-t border-white/10 pt-3">
+							<SlippageToleranceSelector
+								value={slippageTolerancePercent}
+								onChange={setSlippageTolerancePercent}
+								disabled={isSubmitting}
+							/>
+							{slippageBounds && (
+								<p
+									className="mt-2 text-[0.7rem] text-white/45"
+									data-testid="trade-dialog-slippage-bound"
+								>
+									{side === 'buy'
+										? slippageBounds.maxPriceStroops != null && (
+												<>
+													Max price:{' '}
+													<span className="font-semibold text-white/70 tabular-nums">
+														{formatDisplayKeyPrice(
+															slippageBounds.maxPriceStroops
+														)}
+													</span>
+												</>
+											)
+										: slippageBounds.minPriceStroops != null && (
+												<>
+													Min price:{' '}
+													<span className="font-semibold text-white/70 tabular-nums">
+														{formatDisplayKeyPrice(
+															slippageBounds.minPriceStroops
+														)}
+													</span>
+												</>
+											)}
+								</p>
+							)}
+						</div>
+					)}
 				</div>
 
 				{/*
@@ -420,7 +564,9 @@ const TradeDialog: React.FC<TradeDialogProps> = ({
 					</Button>
 					<Button
 						type="button"
-						onClick={() => onConfirm(parsedAmount, pricePreview)}
+						onClick={() =>
+							onConfirm(parsedAmount, pricePreview, slippageBounds)
+						}
 						disabled={
 							!amountValid ||
 							isSubmitting ||
@@ -439,6 +585,27 @@ const TradeDialog: React.FC<TradeDialogProps> = ({
 						</StableButtonContent>
 					</Button>
 				</DialogFooter>
+
+				{/* Subtle keyboard shortcut hint for power users */}
+				<div
+					className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 border-t border-white/5 pt-3 text-[11px] text-white/30"
+					aria-hidden="true"
+					data-testid="trade-dialog-shortcut-hint"
+				>
+					<span className="flex items-center gap-1">
+						<kbd className="rounded border border-white/10 bg-white/[0.04] px-1 py-0.5 font-mono text-[10px]">Enter</kbd>
+						confirm
+					</span>
+					<span className="flex items-center gap-1">
+						<kbd className="rounded border border-white/10 bg-white/[0.04] px-1 py-0.5 font-mono text-[10px]">Esc</kbd>
+						close
+					</span>
+					<span className="flex items-center gap-1">
+						<kbd className="rounded border border-white/10 bg-white/[0.04] px-1 py-0.5 font-mono text-[10px]">+</kbd>
+						<kbd className="rounded border border-white/10 bg-white/[0.04] px-1 py-0.5 font-mono text-[10px]">-</kbd>
+						adjust
+					</span>
+				</div>
 			</DialogContent>
 		</Dialog>
 	);
