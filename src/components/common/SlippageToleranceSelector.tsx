@@ -11,17 +11,6 @@ export interface SlippageToleranceSelectorProps {
 	value: number;
 	onChange: (percent: number) => void;
 	disabled?: boolean;
-	onToleranceChange?: (tolerancePercent: number) => void;
-	/**
-	 * Called with the confirm-eligibility state whenever it changes, so a
-	 * parent trade dialog can disable its own confirm button in lockstep.
-	 */
-	onValidityChange?: (canConfirm: boolean) => void;
-	/** Called when the confirm button is clicked while the tolerance is valid. */
-	onConfirm?: (bounds: {
-		maxPrice: number | null;
-		minPrice: number | null;
-	}) => void;
 	className?: string;
 }
 
