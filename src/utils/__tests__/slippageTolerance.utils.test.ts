@@ -129,6 +129,12 @@ describe('slippageTolerance.utils', () => {
 	});
 });
 
+import {
+	computeSlippagePriceBounds,
+	validateSlippageTolerance,
+	MAX_SLIPPAGE_TOLERANCE_PERCENT,
+} from '@/utils/slippageTolerance.utils';
+
 describe('computeSlippagePriceBounds (#877)', () => {
 	it('computes max_price of 100.5 for a 0.5% buy tolerance on a 100 XLM preview', () => {
 		const { maxPrice, minPrice } = computeSlippagePriceBounds(

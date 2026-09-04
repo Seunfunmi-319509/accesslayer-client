@@ -179,9 +179,9 @@ const KeySimulationTool: React.FC<KeySimulationToolProps> = ({
 						>
 							{formatDisplayKeyPrice(result.totalCostStroops)}
 						</span>
-					</div>					</div>
-				)
-			}
+					</div>
+				</div>
+			)}
 		</div>
 	);
 };
