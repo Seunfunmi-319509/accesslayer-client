@@ -27,7 +27,7 @@ import PercentageBadge from '@/components/common/PercentageBadge';
 import NetworkFeeHint from '@/components/common/NetworkFeeHint';
 import BuyFeeBreakdown from '@/components/common/BuyFeeBreakdown';
 import SlippageToleranceSelector from '@/components/common/SlippageToleranceSelector';
-import { BUY_QUANTITY_BOUNDS, TRADE_FEE_ESTIMATE, FEE_BOUNDS } from '@/constants/fees';
+import { TRADE_FEE_ESTIMATE, FEE_BOUNDS } from '@/constants/fees';
 import { formatTransactionFeeDisplay } from '@/utils/transactionFee.utils';
 import { clampBuyQuantity } from '@/utils/buyQuantity';
 import {
@@ -82,7 +82,6 @@ const TradeDialog: React.FC<TradeDialogProps> = ({
 	onOpenChange,
 	onConfirm,
 	isSubmitting = false,
-	networkFeeEstimateProvider,
 }) => {
 	const [amountText, setAmountText] = useState('1');
 	const [touched, setTouched] = useState(false);
@@ -91,10 +90,6 @@ const TradeDialog: React.FC<TradeDialogProps> = ({
 	const [previewError, setPreviewError] = useState<string | null>(null);
 	const [slippageTolerancePercent, setSlippageTolerancePercent] = useState(
 		DEFAULT_SLIPPAGE_TOLERANCE_PERCENT
-	);
-	const [adjustmentNote, setAdjustmentNote] = useState<string | null>(null);
-	const [feeEstimateState, setFeeEstimateState] = useState<string | null>(
-		null
 	);
 	const amountInputRef = useRef<HTMLInputElement | null>(null);
 	const pricePreviewFailureLogged = useRef(false);
@@ -119,7 +114,6 @@ const TradeDialog: React.FC<TradeDialogProps> = ({
 			setPreviewError(null);
 			setSlippageTolerancePercent(DEFAULT_SLIPPAGE_TOLERANCE_PERCENT);
 			pricePreviewFailureLogged.current = false;
-			setAdjustmentNote(null);
 		}
 	}, [open]);
 
@@ -207,7 +201,7 @@ const TradeDialog: React.FC<TradeDialogProps> = ({
 				setAmountText(clampedResult.value.toString());
 			}
 		}
-	}, [open, networkFeeEstimateProvider]);
+	};
 
 	const parsedAmount = useMemo(() => {
 		const normalized = amountText.trim();
