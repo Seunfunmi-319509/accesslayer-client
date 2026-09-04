@@ -67,7 +67,7 @@ const SlippageToleranceSelector: React.FC<SlippageToleranceSelectorProps> = ({
 					className="font-mono text-xs font-semibold text-amber-300/90 tabular-nums"
 					data-testid="slippage-tolerance-current-value"
 				>
-					{activeToleranceText}%
+					{value}%
 				</span>
 			</div>
 			<div className="flex flex-wrap items-center gap-2">
