@@ -25,6 +25,9 @@ vi.mock('@/components/home/FAQ', () => ({
 vi.mock('@/components/home/Footer', () => ({
 	default: () => <footer>Footer</footer>,
 }));
+vi.mock('@/components/common/ConnectWalletCtaBanner', () => ({
+	default: () => null,
+}));
 vi.mock('@/components/common/ReferralLinkPanel', () => ({
 	default: () => <div>Referral Link Panel</div>,
 }));

@@ -25,6 +25,8 @@ export default function HomePage() {
 			<main>
 				<Hero />
 				<ConnectWalletCtaBanner />
+				<CreatorSpotlight />
+				<TrendingLeaderboard />
 				<TrendingCreators />
 				<FAQ />
 			</main>

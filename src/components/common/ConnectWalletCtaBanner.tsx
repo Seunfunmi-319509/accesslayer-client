@@ -67,7 +67,7 @@ const ConnectWalletCtaBanner: React.FC<ConnectWalletCtaBannerProps> = ({
 			aria-label="Connect your wallet"
 			className={cn(
 				'w-full border-b border-blue-500/20 bg-gradient-to-r from-blue-600/10 via-blue-500/5 to-emerald-500/10',
-				className,
+				className
 			)}
 		>
 			<div className="mx-auto flex max-w-5xl items-center justify-between gap-4 px-6 py-3">
