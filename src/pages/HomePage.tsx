@@ -4,6 +4,7 @@ import Footer from '../components/home/Footer';
 import Header from '../components/home/Header';
 import Hero from '../components/home/Hero';
 import CreatorSpotlight from '../components/home/CreatorSpotlight';
+import MarketOverview from '../components/home/MarketOverview';
 import TrendingCreators from '../components/home/TrendingCreators';
 import TrendingLeaderboard from '../components/home/TrendingLeaderboard';
 import { useNavigationTiming } from '../hooks/useNavigationTiming';
