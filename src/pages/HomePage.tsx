@@ -1,3 +1,4 @@
+import ConnectWalletCtaBanner from '../components/common/ConnectWalletCtaBanner';
 import FAQ from '../components/home/FAQ';
 import Footer from '../components/home/Footer';
 import Header from '../components/home/Header';
@@ -24,6 +25,7 @@ export default function HomePage() {
 			<Header />
 			<main>
 				<Hero />
+				<ConnectWalletCtaBanner />
 				<MarketOverview />
 				<CreatorSpotlight />
 				<TrendingLeaderboard />
