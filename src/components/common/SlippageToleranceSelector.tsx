@@ -60,7 +60,10 @@ const SlippageToleranceSelector: React.FC<SlippageToleranceSelectorProps> = ({
 	};
 
 	return (
-		<div className={cn('space-y-2', className)} data-testid="slippage-tolerance-selector">
+		<div
+			className={cn('space-y-2', className)}
+			data-testid="slippage-tolerance-selector"
+		>
 			<div className="flex items-center justify-between">
 				<span className="text-sm text-white/70">Slippage tolerance</span>
 				<span

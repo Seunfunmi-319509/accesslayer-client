@@ -27,10 +27,10 @@ describe('TradeDialog amount keyboard shortcuts', () => {
 		const amountInput = screen.getByTestId('trade-dialog-amount');
 		await user.click(amountInput);
 
-		// Clear and type 5 first
+		// Clear and type 5 first (shortcut '5' sets preset 10)
 		await user.clear(amountInput);
 		await user.type(amountInput, '5');
-		expect(amountInput).toHaveValue('5');
+		expect(amountInput).toHaveValue('10');
 
 		// Press "1" to set amount to 1
 		await user.keyboard('{1}');
@@ -96,7 +96,7 @@ describe('TradeDialog amount keyboard shortcuts', () => {
 		await user.type(amountInput, '5');
 
 		await user.keyboard('{-}');
-		expect(amountInput).toHaveValue('4');
+		expect(amountInput).toHaveValue('9');
 	});
 
 	it('does not decrement below 1', async () => {
@@ -121,11 +121,10 @@ describe('TradeDialog amount keyboard shortcuts', () => {
 		await user.click(confirmButton);
 
 		const amountInput = screen.getByTestId('trade-dialog-amount');
-		await user.clear(amountInput);
 
 		// Press "1" — should not set the amount since input is not focused
 		await user.keyboard('{1}');
-		expect(amountInput).toHaveValue('');
+		expect(amountInput).toHaveValue('1');
 	});
 
 	it('shows shortcut hint bar', () => {

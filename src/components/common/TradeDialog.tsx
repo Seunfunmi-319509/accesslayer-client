@@ -73,6 +73,9 @@ export interface TradeDialogProps {
 		slippage?: SlippageBounds | null
 	) => Promise<void> | void;
 	isSubmitting?: boolean;
+	networkFeeEstimateProvider?: {
+		getFeeData: () => Promise<{ gasPrice?: bigint }>;
+	};
 }
 
 const TradeDialog: React.FC<TradeDialogProps> = ({

@@ -10,7 +10,11 @@ describe('SlippageToleranceSelector', () => {
 	) {
 		const onChange = vi.fn();
 		const utils = render(
-			<SlippageToleranceSelector value={1} onChange={onChange} {...overrides} />
+			<SlippageToleranceSelector
+				value={1}
+				onChange={onChange}
+				{...overrides}
+			/>
 		);
 		return { onChange, ...utils };
 	}
@@ -42,9 +46,9 @@ describe('SlippageToleranceSelector', () => {
 
 	it('displays the currently selected value', () => {
 		renderSelector({ value: 0.5 });
-		expect(screen.getByTestId('slippage-tolerance-current-value')).toHaveTextContent(
-			'0.5%'
-		);
+		expect(
+			screen.getByTestId('slippage-tolerance-current-value')
+		).toHaveTextContent('0.5%');
 	});
 
 	it('calls onChange with a valid custom value', () => {
