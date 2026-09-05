@@ -13,6 +13,9 @@ vi.mock('@/components/home/Hero', () => ({
 vi.mock('@/components/home/CreatorSpotlight', () => ({
 	default: () => <section>Creator Spotlight</section>,
 }));
+vi.mock('@/components/home/MarketOverview', () => ({
+	default: () => <section>Market Overview</section>,
+}));
 vi.mock('@/components/home/TrendingLeaderboard', () => ({
 	default: () => <section>Trending Leaderboard</section>,
 }));

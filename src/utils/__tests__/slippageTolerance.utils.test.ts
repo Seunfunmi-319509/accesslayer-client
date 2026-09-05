@@ -11,9 +11,6 @@ import {
 	computeMaxPriceStroops,
 	computeMinPriceStroops,
 	computeSlippageBounds,
-	computeSlippagePriceBounds,
-	validateSlippageTolerance,
-	MAX_SLIPPAGE_TOLERANCE_PERCENT,
 } from '../slippageTolerance.utils';
 
 describe('slippageTolerance.utils', () => {
