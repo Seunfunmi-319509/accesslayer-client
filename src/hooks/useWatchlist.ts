@@ -1,7 +1,6 @@
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 import type { Course } from '@/services/course.service';
-import { useRecentlyViewed } from '@/hooks/useRecentlyViewed';
 
 /**
  * localStorage key used by the persisted watchlist store. The store keeps a
@@ -83,12 +82,6 @@ export const useWatchlist = create<WatchlistState>()(
 				const key = resolveWatchlistWalletKey(wallet);
 				const current = get().bookmarksByWallet[key] ?? [];
 				const alreadyBookmarked = current.some(c => c.id === creator.id);
-
-				// Adding a key to the watchlist removes it from the
-				// recently-viewed section so it is no longer suggested.
-				if (!alreadyBookmarked) {
-					useRecentlyViewed.getState().removeKey(creator.id);
-				}
 
 				const next = alreadyBookmarked
 					? current.filter(c => c.id !== creator.id)

@@ -1965,6 +1965,9 @@ function LandingPage() {
 					keyPriceStroops={resolveCreatorKeyPriceStroops(featuredCreator)}
 					protocolFeeBps={250}
 					creatorFeeBps={250}
+					createdAtLedger={featuredCreator?.createdAtLedger}
+					currentLedger={featuredCreator?.currentLedger}
+					launchPenaltyBps={featuredCreator?.launchPenaltyBps}
 					maxBuyQuantity={featuredCreator?.maxBuyQuantity ?? null}
 					isSubmitting={tradeSubmitting}
 					onOpenChange={setTradeDialogOpen}
