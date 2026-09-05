@@ -1,5 +1,5 @@
 /**
- * Unit tests for slippage tolerance utilities (#872).
+ * Unit tests for slippage tolerance utilities (#872, #877).
  */
 
 import { describe, expect, it } from 'vitest';
@@ -11,6 +11,9 @@ import {
 	computeMaxPriceStroops,
 	computeMinPriceStroops,
 	computeSlippageBounds,
+	computeSlippagePriceBounds,
+	validateSlippageTolerance,
+	MAX_SLIPPAGE_TOLERANCE_PERCENT,
 } from '../slippageTolerance.utils';
 
 describe('slippageTolerance.utils', () => {
