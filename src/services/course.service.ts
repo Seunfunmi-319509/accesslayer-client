@@ -55,6 +55,10 @@ export interface Course {
 	 * Applied to sells within the first 7 days after key creation.
 	 */
 	launchPenaltyBps?: number;
+	/** Ledger sequence at which this key was created; anchors the 7-day launch window. */
+	createdAtLedger?: number;
+	/** Network ledger sequence as of this response, used to evaluate the launch window. */
+	currentLedger?: number;
 	/** Optional co-creator wallet configured for this creator key. */
 	coCreatorAddress?: string;
 	/** Co-creator revenue share in basis points. */
